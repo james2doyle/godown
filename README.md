@@ -21,7 +21,7 @@ This will print the compiled HTML to the stdout so you can use it as you wish.
 * Images
 * Bold
 * Italic
-* Deletion with the \\~\\~
+* Deletion with the \~\~
 * Blockquotes
 
 ### Working on
