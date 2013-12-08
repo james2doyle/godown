@@ -1,28 +1,37 @@
-// no panic
-// no println
-// always return
-
 package main
 
 import (
-"flag"
-"fmt"
-"io/ioutil"
-"log"
-"path/filepath"
-"regexp"
-"strings"
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"path/filepath"
+	"regexp"
+	"strings"
 )
+
+var headerRegex = "(#+)(.*)"
+var blockquoteRegex = "\n(&gt;|\\>)(.*)"
+var newlineRegex = "([^\n]+)"
+
+// dont wrap tags that begin with <h <b <u <o <l
+var newlineSkipRegex = "\\<(h|b|u|o|l)(.*)"
 
 func GenerateMap() map[string]string {
 	// the simple replacements
 	x := map[string]string{
-		"<code>$1</code>":       "`(.*?)`",                        // inline code
-		"<img src=\"$2\" alt=\"$1\" />": "!\\[([^\\[]+)\\]\\(([^\\)]+)\\)", // images
-		"<a href=\"$2\">$1</a>": "\\[([^\\[]+)\\]\\(([^\\)]+)\\)", // link
-		"<strong>$2</strong>":   "(\\*\\*|__)(.*?)\\*\\*",         // bold
-		"<em>$2</em>":           "(\\*|_)(.*?)\\*",                // italics
-		"<del>$1</del>":         "\\~\\~(.*?)\\~\\~",              // del
+		// inline code
+		"<code>$1</code>":               "`(.*?)`",
+		// images
+		"<img src=\"$2\" alt=\"$1\" />": "!\\[([^\\[]+)\\]\\(([^\\)]+)\\)",
+		// link
+		"<a href=\"$2\">$1</a>":         "\\[([^\\[]+)\\]\\(([^\\)]+)\\)",
+		// bold
+		"<strong>$2</strong>":           "(\\*\\*|__)(.*?)\\*\\*",
+		// italics
+		"<em>$2</em>":                   "(\\*|_)(.*?)\\*",
+		// del
+		"<del>$1</del>":                 "\\~\\~(.*?)\\~\\~",
 	}
 	return x
 }
@@ -38,13 +47,13 @@ func SimpleParser(contents string) string {
 }
 
 func HandleHeaders(contents string) string {
-	re := regexp.MustCompile("(#+)(.*)")
+	re := regexp.MustCompile(headerRegex)
 	return re.ReplaceAllStringFunc(contents, func(input string) string {
 		// count the number of # to find the size
 		count := strings.Count(input, "#")
 		// wrap the html and trim the #
 		return fmt.Sprintf("<h%d>%s</h%d>", count, strings.TrimSpace(strings.Trim(input, "#")), count)
-		})
+	})
 }
 
 // placeholders for lists
@@ -63,19 +72,18 @@ func HandleHeaders(contents string) string {
 // }
 
 func HandleBlockquotes(contents string) string {
-	re := regexp.MustCompile("\n(&gt;|\\>)(.*)")
+	re := regexp.MustCompile(blockquoteRegex)
 	return re.ReplaceAllStringFunc(contents, func(input string) string {
 		// trim out the "> " in the blockquote
 		input = strings.Replace(input, "> ", "", -1)
 		return fmt.Sprintf("\n<blockquote><p>%s</p></blockquote>", strings.TrimSpace(input))
-		})
+	})
 }
 
 func HandleNewLines(contents string) string {
-	re := regexp.MustCompile("([^\n]+)")
+	re := regexp.MustCompile(newlineRegex)
 	return re.ReplaceAllStringFunc(contents, func(input string) string {
-		// dont wrap tags that begin with <h <b <u <o
-		re2 := regexp.MustCompile("\\<(h|b|u|o|l)(.*)")
+		re2 := regexp.MustCompile(newlineSkipRegex)
 		// see if this is already wrapped with some html
 		index := re2.FindStringIndex(input)
 		if index != nil {
@@ -85,9 +93,10 @@ func HandleNewLines(contents string) string {
 			// handle this B
 			return fmt.Sprintf("<p>%s</p>", input)
 		}
-		})
+	})
 }
 
+// the string of the file
 var s = ""
 
 func ReadFile(filename string) {
@@ -116,7 +125,7 @@ func WriteFile(filename string) {
 	}
 }
 
-var stdFlag = flag.Bool("stdout", false, "Print the output to stdout instead of a file")
+var stdFlag = flag.Bool("stdout", false, "Print the output to stdout instead of a .html file")
 
 func main() {
 	flag.Parse()
